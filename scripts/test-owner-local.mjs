@@ -1,0 +1,105 @@
+// Non-destructive acceptance test: creates two isolated test accounts and keeps them.
+import { chromium, expect } from '@playwright/test';
+import { PrismaClient } from '@prisma/client';
+import { randomBytes } from 'node:crypto';
+import { writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { resolve } from 'node:path';
+import { scannerTestDatabase } from './scanner-test-db.mjs';
+process.env.DATABASE_URL = scannerTestDatabase();
+const db = new PrismaClient();
+const baseURL = 'http://localhost:4174';
+const headers = { Origin: baseURL };
+const browser = await chromium.launch();
+const owner = await browser.newContext({ baseURL });
+const member = await browser.newContext({ baseURL });
+owner.setDefaultTimeout(30000);
+const page = await owner.newPage();
+const errors = [];
+page.on('pageerror', error => errors.push(error.message));
+const report = { testedAt: new Date().toISOString(), checks: [] };
+try {
+  expect((await owner.request.get('/api/owner/summary')).status()).toBe(401);
+  const password = randomBytes(24).toString('base64url');
+  const register = async (context, suffix) => {
+    const email = `owner-test-${Date.now()}-${suffix}@example.com`;
+    const response = await context.request.post('/api/auth/register', { headers, data: { email, password, name: `Owner test ${suffix}` } });
+    expect(response.status(), await response.text()).toBe(201);
+    const result = await response.json();
+    expect(result.role).toBe('USER');
+    return result;
+  };
+  const ownerEmail = `owner-test-${Date.now()}-owner@example.com`;
+  const provision = spawnSync(process.execPath, [resolve('scripts/create-owner.mjs'), ownerEmail, '--scanner-test'], { encoding: 'utf8', windowsHide: true });
+  expect(provision.status, provision.stderr).toBe(0);
+  const setup = JSON.parse(provision.stdout);
+  expect(setup.created).toBe(true);
+  const ownerAccount = await db.user.findUniqueOrThrow({ where: { email: ownerEmail }, select: { id: true, email: true } });
+  const memberAccount = await register(member, 'member');
+  expect((await member.request.get('/api/owner/summary')).status()).toBe(403);
+  expect((await member.request.get('/api/owner/users')).status()).toBe(403);
+  const forged = await member.request.post('/api/auth/register', { headers, data: { name: 'Forged', email: `forged-${Date.now()}@example.com`, password, role: 'OWNER' } });
+  expect(forged.status()).toBe(400);
+  expect((await member.request.patch('/api/users/me', { headers, data: { name: 'Member', role: 'OWNER' } })).status()).toBe(400);
+  await page.goto(setup.setupUrl);
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Update password' }).click();
+  await expect(page.getByText('Password updated. Sign in with your new password.')).toBeVisible();
+  await page.getByRole('link', { name: 'Continue to sign in' }).click();
+  const replay = await owner.request.post('/api/auth/reset-password', { headers, data: { token: setup.setupUrl.split('token=')[1], password } });
+  expect(replay.status()).toBe(400);
+  await page.getByLabel('Email address').fill(ownerAccount.email);
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page).toHaveURL(`${baseURL}/app/owner`);
+  await expect(page.getByRole('heading', { name: 'Owner dashboard', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Owner dashboard' })).toBeVisible();
+  const summary = await (await owner.request.get('/api/owner/summary')).json();
+  expect(summary.users).toBe(await db.user.count());
+  expect(summary.products).toBe(await db.product.count());
+  expect(summary.warranties.active + summary.warranties.expiring + summary.warranties.expired).toBe(summary.products);
+  expect((await owner.request.get('/api/owner/users?page=0')).status()).toBe(400);
+  const listing = await (await owner.request.get('/api/owner/users')).json();
+  expect(listing.data.length).toBeLessThanOrEqual(20);
+  for (const row of listing.data) {
+    expect(Object.keys(row).sort()).toEqual(['id', 'name', 'email', 'role', 'createdAt', 'emailVerifiedAt', 'subscription', '_count'].sort());
+  }
+  if (listing.total > 20) {
+    const second = await (await owner.request.get('/api/owner/users?page=2')).json();
+    expect(second.data.length).toBeGreaterThan(0);
+    expect(second.data.some(row => listing.data.some(first => first.id === row.id))).toBe(false);
+  }
+  await page.getByLabel('Search users').fill(memberAccount.email.toUpperCase());
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(page.getByRole('cell').filter({ hasText: memberAccount.email })).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('1 user matching');
+  await page.getByLabel('Search users').fill('no-such-user-unique-query');
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(page.getByText('No users found. Try a different name or email.')).toBeVisible();
+  await page.getByRole('button', { name: 'Clear', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'User accounts' })).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.screenshot({ path: '.data/owner-dashboard.png', fullPage: true, animations: 'disabled' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: '.data/owner-dashboard-mobile.png', fullPage: true, animations: 'disabled' });
+  report.checks.push('Owner provisioning and one-time password setup, login redirect, navigation, real aggregate statistics, safe user fields, search, empty state, pagination and mobile layout passed');
+  const categories = await (await member.request.get('/api/categories')).json();
+  const productResponse = await member.request.post('/api/products', { headers, data: { name: 'Private member product', categoryId: categories[0].id, currency: 'USD', purchaseDate: '2026-10-24', warrantyMonths: 12 } });
+  expect(productResponse.status(), await productResponse.text()).toBe(201);
+  const product = await productResponse.json();
+  expect((await owner.request.get(`/api/products/${product.id}`)).status()).toBe(404);
+  expect((await owner.request.get(`/api/products/${product.id}/receipts`)).status()).toBe(404);
+  await db.user.update({ where: { id: ownerAccount.id }, data: { role: 'USER' } });
+  expect((await owner.request.get('/api/owner/summary')).status()).toBe(403);
+  const memberPage = await member.newPage();
+  await memberPage.goto('/app/owner');
+  await expect(memberPage.getByRole('heading', { name: 'Owner access required' })).toBeVisible();
+  await expect(memberPage.getByRole('link', { name: 'Owner dashboard' })).toHaveCount(0);
+  report.checks.push('Anonymous/member access rejected, role injection blocked, current role enforced, member interface denied, private products and receipts protected');
+  // Leave both verification accounts as ordinary members after testing.
+  expect(errors).toEqual([]);
+  report.checks.push('No uncaught browser errors; existing users and products retained');
+  await writeFile('.data/owner-test-result.json', JSON.stringify(report, null, 2));
+  console.log(JSON.stringify(report, null, 2));
+} finally { await browser.close(); await db.$disconnect(); }

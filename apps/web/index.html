@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#6d4aff" />
+    <meta
+      name="description"
+      content="Your purchases, receipts and warranties. Beautifully organized in one private place."
+    />
+    <title>WarrantyVault — A little peace of mind</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <script>
+      try {
+        var root = document.documentElement;
+        root.classList.toggle('dark', localStorage.getItem('theme') === 'dark');
+        root.lang = localStorage.getItem('language') === 'ar' ? 'ar' : 'en';
+        root.dir = root.lang === 'ar' ? 'rtl' : 'ltr';
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

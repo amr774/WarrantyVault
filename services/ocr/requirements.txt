@@ -1,0 +1,6 @@
+paddlepaddle==3.2.2
+paddleocr==3.3.2
+fastapi==0.115.14
+uvicorn==0.34.3
+pypdfium2==4.30.0
+Pillow==11.3.0

@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: warrantyvault
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_dev_only}
+      POSTGRES_DB: warrantyvault
+    ports: ['127.0.0.1:15433:5432']
+    volumes: ['postgres_data:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U warrantyvault']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  mail:
+    image: axllent/mailpit:v1.27
+    ports: ['127.0.0.1:1025:1025', '127.0.0.1:8025:8025']
+  api:
+    profiles: ['app']
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    env_file: apps/api/.env
+    environment:
+      DATABASE_URL: postgresql://warrantyvault:${POSTGRES_PASSWORD:-local_dev_only}@db:5432/warrantyvault
+      MAIL_DRIVER: smtp
+      SMTP_HOST: mail
+      SMTP_PORT: 1025
+      LOCAL_STORAGE_PATH: /data/receipts
+    volumes: ['receipts:/data/receipts']
+    ports: ['127.0.0.1:3100:3100']
+    depends_on:
+      db: { condition: service_healthy }
+  web:
+    profiles: ['app']
+    build: { context: ., dockerfile: apps/web/Dockerfile }
+    ports: ['127.0.0.1:4173:80']
+    depends_on: [api]
+volumes:
+  postgres_data:
+  receipts:

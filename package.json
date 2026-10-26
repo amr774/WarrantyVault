@@ -1,0 +1,46 @@
+{
+  "name": "warrantyvault",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web \"npm run dev -w apps/api\" \"npm run dev -w apps/web\"",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint apps packages",
+    "test": "npm run test --workspaces --if-present",
+    "test:integration": "npm run test:integration -w apps/api",
+    "test:e2e": "playwright test",
+    "db:generate": "npm run db:generate -w apps/api",
+    "db:migrate": "npm run db:migrate -w apps/api",
+    "db:seed": "npm run db:seed -w apps/api"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@nestjs/swagger": "^11.4.7",
+    "@playwright/test": "^1.56.1",
+    "@prisma/config": "^6.19.3",
+    "concurrently": "^9.2.1",
+    "deepmerge-ts": "^8.0.2",
+    "eslint": "^9.39.1",
+    "js-yaml": "^5.5.0",
+    "prettier": "^3.6.2",
+    "prisma": "^6.19.3",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.2"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "overrides": {
+    "@nestjs/platform-express": {
+      "multer": "2.5.0"
+    },
+    "deepmerge-ts": "^8.0.2",
+    "@nestjs/swagger": {
+      "js-yaml": "^5.4.1"
+    }
+  }
+}
