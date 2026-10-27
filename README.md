@@ -1,8 +1,16 @@
 # WarrantyVault
 
+A place to keep product records, private receipts and warranty dates together, with reminders before coverage expires.
+
+![WarrantyVault running locally](docs/screenshots/desktop.png)
+
+[Arabic mobile view](docs/screenshots/mobile-ar.png) · [Actual OCR review](docs/screenshots/scanner.png) · [Current verification](docs/PORTFOLIO_REVIEW.md) · [Deployment](docs/DEPLOYMENT.md)
+
+Screenshots captured on 2026-10-27 from isolated local test data. OCR examples use labelled synthetic receipts. No verified hosted demo is available.
+
 Arabic/English and light/dark controls are available in the header and Settings. See [display preferences](docs/DISPLAY_PREFERENCES.md).
 
-See the [2026-10-25 project audit](docs/PROJECT_AUDIT_2026-10-25.md) for verified fixes, tests, local instance details and remaining limits.
+The [2026-10-25 audit](docs/PROJECT_AUDIT_2026-10-25.md) is historical; current results are recorded separately above.
 
 A working React + NestJS application for private receipts, product records, warranty dates, and scheduled reminders. PostgreSQL is the source of truth; the UI has no fake API data. Billing displays the current plan and usage; purchasing is intentionally unavailable.
 
@@ -98,3 +106,11 @@ Playwright starts the API and Vite if needed, runs desktop and Pixel 7 viewport 
 After initial migrations and seeding, `docker compose --profile app up --build -d` runs the API and Nginx frontend with development database/mail services. Stop local processes on ports 3100 and 4173 first. The development Compose setup is not a production security configuration.
 
 See [deployment guide](docs/DEPLOYMENT.md), [security model](docs/SECURITY.md), and [implementation/check record](docs/IMPLEMENTATION.md). Production requires HTTPS, PostgreSQL, a private S3-compatible bucket, SMTP, backups, and a continuously running API process. There is no payment gateway or external AI dependency.
+
+## Portfolio / CV description
+
+> Bilingual warranty and receipt management application built with React, TypeScript, NestJS, Prisma and PostgreSQL, featuring private document uploads, warranty calculations, scheduled reminders and a local OCR review workflow.
+
+## Current deployment boundary
+
+Manual product/receipt workflows support the documented S3/SMTP production configuration. The OCR scanner currently saves only to local storage, while production requires S3, so do not advertise the scanning workflow as production-ready. Current verification covers local adapters, actual local OCR and Chromium desktop/mobile; cloud S3/SMTP and HTTPS hosting remain unverified.
