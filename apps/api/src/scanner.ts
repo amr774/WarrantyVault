@@ -56,7 +56,7 @@ export class ScannerController {
       });
     } catch {
       throw new ServiceUnavailableException(
-        'Local OCR service unavailable or timed out. Start services/ocr/service.py and retry. Your document has not been saved.',
+        'Receipt scanning is temporarily unavailable. Please retry later or enter the product manually. Your document has not been saved.',
       );
     }
     if (!response.ok) {

@@ -61,4 +61,10 @@ SMTP cannot guarantee exactly-once delivery. A provider idempotency API is neede
 
 The MVP validates allowed file signatures and serves them privately with restrictive headers. It does not include malware scanning. Add a quarantine/scanning pipeline before accepting uploads in a higher-risk public deployment. Do not serve uploaded files as executable HTML or through a public bucket.
 
-Swagger is exposed only outside production. Source maps and development tools should not be publicly hosted. Payment processing, family sharing, OCR, and AI extraction are intentionally not enabled.
+Swagger is exposed only outside production. Source maps and development tools should not be publicly hosted. Payment processing and family sharing are not implemented. Local PaddleOCR analysis/review is implemented and was tested on 2026-10-27; saving scans requires STORAGE_DRIVER=local. Because production startup requires S3, the scan-confirm workflow is not production-compatible. Use manual product entry/receipt uploads in production until a separately reviewed storage integration is implemented.
+
+## Portfolio deployment status (2026-10-27)
+
+No homepage, Pages site or GitHub deployment record was found. No compatible connected persistent Node/PostgreSQL/S3/SMTP host was available. To publish, supply hosting access, a dedicated PostgreSQL database, a private S3-compatible bucket and SMTP credentials via the hosting secret manager. A public domain/TLS and a continuously running API are required for cookies and reminders. No costs were authorized or incurred.
+
+For a local scanning demonstration, run Python 3.12 with services/ocr/requirements.txt, prepare the public OCR model weights with services/ocr/models.py, then run services/ocr/service.py on loopback port 8100. Keep Nest and OCR on the same host; the OCR server intentionally rejects remote clients. The Docker app profile does not include OCR. Never publish port 8100. No documents are sent to an external OCR provider.

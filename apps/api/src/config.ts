@@ -6,7 +6,7 @@ export const config = z
     DATABASE_URL: z.string().min(1),
     JWT_SECRET: z.string().min(32),
     WEB_URL: z.url().default('http://localhost:4173'),
-    PORT: z.coerce.number().default(3100),
+    PORT: z.coerce.number().int().min(1).max(65535).default(3100),
     STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
     LOCAL_STORAGE_PATH: z.string().default('../../.data/receipts'),
     MAIL_DRIVER: z.enum(['file', 'smtp']).default('file'),
@@ -26,6 +26,9 @@ export const config = z
     MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(10485760),
   })
   .parse(process.env);
+const webUrl = new URL(config.WEB_URL);
+if (!['http:', 'https:'].includes(webUrl.protocol) || webUrl.origin !== config.WEB_URL)
+  throw new Error('WEB_URL must be an exact HTTP(S) origin, without a path or trailing slash');
 if (
   config.NODE_ENV === 'production' &&
   (config.STORAGE_DRIVER !== 's3' ||

@@ -1,3 +1,5 @@
+> Historical record: machine paths, running instances and results below belong to an earlier review. See [the current review](PORTFOLIO_REVIEW.md) for the 2026-10-27 checkout.
+
 # Local receipt and warranty scanner
 
 Open **http://localhost:4173/app/scan** after signing in. The dashboard and new-product page also have a **Scan Receipt** button. Upload a document or use **Take photo**, start OCR, review the original alongside editable fields, choose a category, and click **Confirm & Save**. No scan is persisted before confirmation.
